@@ -1,0 +1,17 @@
+# Large files
+*.zip
+*.h5
+*.keras
+*.h5py
+
+# Dataset
+kvasir-seg/
+
+# Python cache
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Outputs
+outputs/
+predictions/
