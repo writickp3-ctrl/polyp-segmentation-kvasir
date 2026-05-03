@@ -1,25 +1,26 @@
-# 🔬 Polyp Segmentation using Multi-Scale U-Net on Kvasir-SEG
+# 🔬 Polyp Segmentation using ResUNet++ on Kvasir-SEG
 
 <div align="center">
 
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)
 ![Keras](https://img.shields.io/badge/Keras-D00000?style=for-the-badge&logo=keras&logoColor=white)
+![Albumentations](https://img.shields.io/badge/Albumentations-1.3.1-blueviolet?style=for-the-badge)
 ![Colab](https://img.shields.io/badge/Google%20Colab-F9AB00?style=for-the-badge&logo=googlecolab&logoColor=white)
 ![HuggingFace](https://img.shields.io/badge/🤗%20HuggingFace-Spaces-FFD21E?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
 ### Automated pixel-level polyp detection in colonoscopy images
 
-**Best Val Dice: 0.7941 · Best Val IoU: 0.6623 · Trained for 60 Epochs**
+**Val Dice: 0.7695 · Val IoU: 0.6291 · TTA Test Dice: 0.7777 · TTA Test IoU: 0.6825**
 
-[🚀 **Live Demo**](https://huggingface.co/spaces/Writick/polyp-segmentation) · [📄 Project Report](#-project-report) · [🏗️ Architecture](#️-architecture) · [📊 Results](#-results) · [🛠️ Quick Start](#️-quick-start)
+[🚀 **Live Demo**](https://huggingface.co/spaces/Writick/polyp-segmentation) · [📄 Report](#-project-report) · [🏗️ Architecture](#️-architecture) · [📊 Results](#-results) · [🛠️ Quick Start](#️-quick-start)
 
 ---
 
-> **Course:** PCS 220 — Multimedia Processing Lab  
-> **Institution:** Thapar Institute of Engineering & Technology, Patiala  
-> **Supervisor:** Dr. Abhishek Kesarwani (Assistant Professor)
+> **Course:** PCS 220 — Multimedia Processing Lab
+> **Institution:** Thapar Institute of Engineering & Technology, Patiala
+> **Supervisor:** Dr. Abhishek Kesarwani (Assistant Professor, CSE)
 
 </div>
 
@@ -43,23 +44,25 @@
 
 ## 🌟 Overview
 
-Colorectal cancer ranks among the **top 3 most diagnosed cancers** globally. Early detection of precancerous polyps during colonoscopy can reduce mortality by up to **90%**, yet clinicians miss **6–27%** of polyps due to fatigue and morphological variability.
+Colorectal cancer ranks among the **top 3 most diagnosed cancers** globally. Early detection of precancerous polyps during colonoscopy can reduce mortality by up to **90%**, yet clinicians miss **6–27%** of polyps due to fatigue, limited field of view and strong morphological variability.
 
-This project delivers a complete, end-to-end deep learning pipeline that segments polyps at the **pixel level** — identifying exactly which pixels in a colonoscopy frame belong to a polyp. It was developed as part of the Multimedia Processing Lab course at TIET and is **fully deployed** as a live web application on HuggingFace Spaces.
+This project delivers a complete, end-to-end deep learning pipeline that segments polyps at the **pixel level** — identifying exactly which pixels in a colonoscopy frame belong to a polyp. The final model is **ResUNet++**: a residual encoder-decoder with squeeze-and-excitation recalibration, an ASPP bottleneck, attention-gated skip connections and deep supervision. It is trained on **Kvasir-SEG** and deployed as a live web application on HuggingFace Spaces.
 
 ### What makes this different from a basic U-Net
 
-| Component | Baseline U-Net | This Project |
+| Component | Baseline U-Net | This Project (ResUNet++) |
 |:---|:---|:---|
-| **Architecture** | Plain encoder-decoder | **ResUNet++ with Squeeze-Excitation blocks** |
-| **Bottleneck** | Single Conv Block | **ASPP (5 dilation rates — multi-scale context)** |
-| **Skip Connections** | Plain concatenation | **Attention Gates (suppress irrelevant background)** |
-| **Loss Function** | Dice + BCE | **Focal-Tversky + Boundary loss + Deep Supervision** |
-| **LR Schedule** | ReduceLROnPlateau | **Cosine Annealing with 5-epoch linear warmup** |
+| **Architecture** | Plain encoder-decoder | **Residual blocks + Squeeze-Excitation** |
+| **Input Size** | 256 × 256 | **352 × 352** |
+| **Bottleneck** | Single Conv Block | **ASPP (dilation rates 1, 3, 6, 12)** |
+| **Skip Connections** | Plain concatenation | **Attention Gates** |
+| **Loss Function** | Dice + BCE | **Focal-Tversky + Boundary Loss** |
+| **Supervision** | Single output head | **3 heads: output + ds3 + ds2** |
+| **LR Schedule** | ReduceLROnPlateau | **5-epoch warmup + cosine annealing** |
 | **Augmentation** | 3 basic transforms | **12-transform Albumentations pipeline** |
-| **Precision** | float32 | **Mixed precision float16 (2× faster on GPU)** |
-| **Training** | With early stopping | **Full 60 epochs — no premature stopping** |
-| **Inference** | Single forward pass | **8-fold TTA flip ensemble** |
+| **Precision** | float32 | **Mixed precision float16** |
+| **Training** | With early stopping | **Full 60 epochs — no early stopping** |
+| **Inference** | Single forward pass | **8-fold TTA flip/rotate ensemble** |
 
 ---
 
@@ -70,21 +73,12 @@ This project delivers a complete, end-to-end deep learning pipeline that segment
 ### 👉 [https://huggingface.co/spaces/Writick/polyp-segmentation](https://huggingface.co/spaces/Writick/polyp-segmentation)
 
 Upload any colonoscopy image (JPEG/PNG) and the model returns:
-- **Binary Mask** — white regions on black background showing predicted polyp pixels
+- **Binary Mask** — white polyp regions on a black background
 - **Overlay** — red-tinted segmentation superimposed on the original image
 
-The interface is fully **mobile-responsive** and runs entirely server-side on HuggingFace hardware — no GPU or Python installation required.
+The interface is fully **mobile-responsive** and runs entirely server-side on HuggingFace hardware — no local GPU or Python installation required.
 
-<table>
-<tr>
-<td align="center"><b>Desktop View — Multi-polyp</b></td>
-<td align="center"><b>Mobile View — Single polyp</b></td>
-</tr>
-<tr>
-<td>Input colonoscopy frame → Binary Mask + Red overlay for both polyp regions correctly localised</td>
-<td>Fully responsive Gradio interface on Android — clean segmentation blob with red overlay on original frame</td>
-</tr>
-</table>
+> ⚠️ **Model weights (`best_model.h5`) are not stored in this repository due to GitHub's 100 MB file size limit.** They are hosted directly on HuggingFace Spaces and loaded automatically when you use the live demo.
 
 ---
 
@@ -99,74 +93,78 @@ The interface is fully **mobile-responsive** and runs entirely server-side on Hu
 | Image Format | JPEG |
 | Mask Encoding | White = polyp, Black = background |
 | Annotation | Expert endoscopist annotated |
-| Input Size | Variable → resized to 256×256 for training |
-| Extra Annotation | Bounding-box coordinates (JSON) |
-| Source | [Simula Research Lab, Norway](https://datasets.simula.no/kvasir-seg/) |
+| Input Size | Variable → resized to **352 × 352** for training |
+| Source | [datasets.simula.no/kvasir-seg](https://datasets.simula.no/kvasir-seg/) |
 
 ### Data Split
 
-| Split | Proportion | Samples |
-|:---|:---|:---|
-| Training | 75% | ~750 images |
-| Validation | 15% | ~150 images |
-| Test | 10% | ~100 images |
+| Split | Proportion | Approx. Samples | Purpose |
+|:---|:---|:---|:---|
+| Training | 75% | ~750 | Model optimisation + augmentation |
+| Validation | 15% | ~150 | Checkpoint selection |
+| Test | 10% | ~100 | Single-pass & 8-fold TTA evaluation |
 
-### Why Kvasir-SEG is challenging
+Split is deterministic via `train_test_split` with `SEED = 42`.
 
-Polyps vary enormously in **size** (a few mm to several cm), **shape** (sessile, pedunculated, flat), **colour** (pale pink to reddish-brown), and **texture**. Their boundaries are often visually indistinct even to trained endoscopists — making pixel-precise segmentation a genuinely hard problem.
+### Why Kvasir-SEG is hard
+
+Polyps vary enormously in **size** (a few mm to several cm), **shape** (sessile, pedunculated, flat), **colour** (pale pink to reddish-brown) and **texture**. Their boundaries are often visually indistinct even to trained endoscopists, making pixel-precise segmentation a genuinely difficult problem.
 
 ---
 
 ## 🏗️ Architecture
 
-### ResUNet++ with ASPP Bridge + Attention Gates
+### ResUNet++ with ASPP Bridge · Attention Gates · Deep Supervision
 
 ```
-Input (256×256×3)
+Input (352×352×3)
        │
-  ┌────▼────────────────────────────────────────────────┐
-  │              ENCODER (Residual Blocks)               │
-  │  Block 1: ResBlock → SE → MaxPool  [32 filters]     │
-  │  Block 2: ResBlock → SE → MaxPool  [64 filters]     │
-  │  Block 3: ResBlock → SE → MaxPool  [128 filters]    │
-  │  Block 4: ResBlock → SE → MaxPool  [256 filters]    │
-  └────────────────────────────────────────────────────┘
+  ┌────▼────────────────────────────────────────────────────────────┐
+  │                 STEM CONV  32 filters  352×352                  │
+  └────────────────────────────────────────────────────────────────┘
        │
-  ┌────▼────────────────────────────────────────────────┐
-  │         BRIDGE — ASPP (5 dilation rates)            │
-  │   d=1, d=6, d=12, d=18, d=24 → Concat → Conv      │
-  └────────────────────────────────────────────────────┘
+  ┌────▼────────────────────────────────────────────────────────────┐
+  │                ENCODER  (Residual + SE blocks)                  │
+  │  E1: ResBlock + SE + MaxPool   32f  →  176×176                 │
+  │  E2: ResBlock + SE + MaxPool   64f  →   88×88                  │
+  │  E3: ResBlock + SE + MaxPool  128f  →   44×44                  │
+  │  E4: ResBlock + SE + MaxPool  256f  →   22×22                  │
+  └────────────────────────────────────────────────────────────────┘
        │
-  ┌────▼────────────────────────────────────────────────┐
-  │     DECODER (Attention Gates on skip connections)   │
-  │  Up 4: Upsample + AttGate(skip4) + ResBlock        │
-  │  Up 3: Upsample + AttGate(skip3) + ResBlock        │
-  │  Up 2: Upsample + AttGate(skip2) + ResBlock        │
-  │  Up 1: Upsample + AttGate(skip1) + ResBlock        │
-  └────────────────────────────────────────────────────┘
+  ┌────▼────────────────────────────────────────────────────────────┐
+  │           BRIDGE — ASPP  512f  (rates 1, 3, 6, 12)             │
+  └────────────────────────────────────────────────────────────────┘
        │
-  ┌────▼─────────────────────────────────────────────────┐
-  │  OUTPUT: Conv 1×1 + Sigmoid → 256×256×1 binary mask │
-  │  + 2 auxiliary deep supervision heads (training only)│
-  └──────────────────────────────────────────────────────┘
+  ┌────▼────────────────────────────────────────────────────────────┐
+  │       DECODER  (Transposed Conv + Attention Gate + ResBlock)    │
+  │  D4: Up + AttGate(skip E4) + ResBlock  256f  →   44×44         │
+  │  D3: Up + AttGate(skip E3) + ResBlock  128f  →   88×88   ←ds3  │
+  │  D2: Up + AttGate(skip E2) + ResBlock   64f  →  176×176  ←ds2  │
+  │  D1: Up + AttGate(skip E1) + ResBlock   32f  →  352×352         │
+  └────────────────────────────────────────────────────────────────┘
+       │
+  ┌────▼────────────────────────────────────────────────────────────┐
+  │  OUTPUT: Conv 1×1 + Sigmoid  →  352×352×1  binary mask         │
+  │  (+ auxiliary heads ds3 and ds2 — training only)               │
+  └────────────────────────────────────────────────────────────────┘
 ```
 
-### Key Components Explained
+### Architecture Components Explained
 
-**Residual Blocks (Encoder/Decoder)**
-Each block uses pre-activation residual connections with a 1×1 shortcut projection when filter counts change. This prevents vanishing gradients and enables the network to go deeper without degradation.
+**Residual Blocks**
+Pre-activation residual connections with 1×1 shortcut projections. Prevents vanishing gradients and enables deeper encoding without degradation.
 
-**Squeeze-and-Excitation (SE) Blocks**
-After each residual block, SE modules perform channel-wise recalibration — globally averaging spatial features, then learning which channels are important for polyp detection. This adds negligible parameters but meaningfully improves representational quality.
+**Squeeze-and-Excitation (SE)**
+Channel-wise recalibration after each residual block. The SE module globally averages spatial features, then learns which channels are most informative for polyp detection. Adds negligible parameters.
 
-**ASPP Bridge (Bottleneck)**
-The Atrous Spatial Pyramid Pooling bridge applies parallel dilated convolutions at 5 different rates (1, 6, 12, 18, 24) at the deepest representation. This captures polyp context across vastly different scales simultaneously — critical since polyps range from a few pixels to hundreds.
+**ASPP Bridge**
+Atrous Spatial Pyramid Pooling at the bottleneck uses parallel dilated convolutions (rates 1, 3, 6, 12) to capture context across multiple scales simultaneously — essential since polyps range from a few pixels to hundreds.
 
-**Attention Gates (Skip Connections)**
-Instead of concatenating encoder features directly, each skip connection passes through an attention gate that learns to highlight polyp-relevant spatial regions and suppress background. This reduces the decoder's workload and sharpens boundary predictions.
+**Attention Gates**
+Each skip connection passes through an attention gate before concatenation with the decoder. Gates learn to suppress background noise and highlight polyp-relevant spatial regions, sharpening boundary predictions.
 
 **Deep Supervision**
-During training, auxiliary segmentation heads are attached at two intermediate decoder levels with weighted losses (0.3× each). This forces the decoder to produce useful intermediate representations and provides richer gradient signal through the network.
+Auxiliary segmentation heads at decoder levels D3 (ds3) and D2 (ds2) contribute to training loss, improving gradient flow to early layers. Only the main `output` head is used at inference time.
 
 ---
 
@@ -175,246 +173,232 @@ During training, auxiliary segmentation heads are attached at two intermediate d
 ### Loss Function
 
 ```
-Total Loss = Main Loss (×1.0) + Aux Loss 1 (×0.3) + Aux Loss 2 (×0.3)
+Total Loss = Main Loss (×1.0) + ds3 Loss (×0.3) + ds2 Loss (×0.3)
 
-where each component loss =
-    0.5 × Focal-Tversky Loss + 0.5 × Boundary-Aware BCE
+Each head loss = 0.8 × Focal-Tversky Loss + 0.2 × Boundary Loss
 ```
 
-**Focal-Tversky Loss** penalises false negatives 2.3× harder than false positives — critical for small polyps where missing them has clinical consequences. The focal exponent further concentrates training on hard examples.
+**Focal-Tversky Loss** — penalises false negatives more heavily than false positives, which is critical for small polyps where under-segmentation has clinical consequences. The focal exponent concentrates training on hard examples.
 
-**Boundary Loss** adds an additional penalty specifically at mis-segmented edges (where the predicted mask disagrees with the ground truth contour). Clinicians focus most on polyp boundaries for size estimation, so this is clinically meaningful.
+**Boundary Loss** — adds an edge-aware penalty at mis-segmented contours. Since clinicians rely on accurate boundaries for size estimation, this is clinically meaningful.
 
 ### Learning Rate Schedule
 
 ```
-Epochs  0–5  : Linear warmup  1e-6 → 2e-4
-Epochs  5–60 : Cosine annealing  2e-4 → 1e-6
+Epochs  0 – 5  :  Linear warmup   1e-6  →  2e-4
+Epochs  5 – 60 :  Cosine annealing  2e-4  →  1e-6
 ```
 
-No early stopping — the full 60 epochs allow the cosine schedule to complete its decay cycle, which consistently outperforms plateau-based stopping.
+No early stopping — the full 60 epochs let the cosine schedule complete its decay, providing consistently better results than plateau-based stopping.
 
-### Augmentation Pipeline (12 transforms, training only)
+### 12-Transform Albumentations Augmentation Pipeline
 
 | Category | Transform | Probability |
 |:---|:---|:---|
-| Geometric | Horizontal + Vertical Flip | 50% each |
+| Geometric | Horizontal Flip | 50% |
+| Geometric | Vertical Flip | 50% |
 | Geometric | Random 90° Rotate | 50% |
-| Geometric | Shift/Scale/Rotate (±30°) | 50% |
-| Deformation | Elastic Transform | 30% |
-| Deformation | Grid Distortion | 30% |
-| Deformation | Optical Distortion | 30% |
-| Intensity | CLAHE (contrast normalisation) | 40% |
-| Intensity | Hue/Saturation/Value | 40% |
-| Intensity | Random Brightness/Contrast | 40% |
-| Noise | Gaussian Noise | 20% |
-| Dropout | CoarseDropout (simulates occlusion) | 20% |
+| Geometric | ShiftScaleRotate (±30°) | 50% |
+| Deformation | ElasticTransform | 30% |
+| Deformation | GridDistortion | 30% |
+| Deformation | OpticalDistortion | 30% |
+| Intensity | CLAHE | 40% |
+| Intensity | HueSaturationValue | 40% |
+| Intensity | RandomBrightnessContrast | 40% |
+| Noise | GaussNoise | 20% |
+| Occlusion | CoarseDropout | 20% |
+
+Applied to training data only; validation and test use deterministic preprocessing.
 
 ### Hyperparameters
 
 | Parameter | Value |
 |:---|:---|
 | Input Size | 352 × 352 × 3 |
-| Batch Size | 8 (reduce to 4 if OOM) |
-| Epochs | 60 (no early stopping) |
-| Peak LR | 2 × 10⁻⁴ |
-| Minimum LR | 1 × 10⁻⁶ |
+| Batch Size | 8 |
+| Epochs | 60 (no EarlyStopping) |
+| Peak LR | 2e-4 (Adam) |
 | Warmup Epochs | 5 |
 | Base Filters | 32 |
 | Mixed Precision | float16 |
-| Optimiser | Adam |
-| GPU | NVIDIA T4 (Google Colab) |
+| Checkpoint Monitor | `val_output_dice_coef` |
+| Checkpoint Format | `best_model.keras` |
+| Log File | `training_log.csv` |
 
 ---
 
 ## 📊 Results
 
-### Quantitative Results (Best Checkpoint — Epoch 54)
+### Best Validation Metrics (Epoch 58)
 
 | Metric | Value |
 |:---|:---|
-| **Val Dice Coefficient** | **0.7941** |
-| **Val IoU (Jaccard)** | **0.6623** |
-| Val Total Loss | 0.7005 |
-| Val Main Output Loss | 0.3842 |
+| `val_output_dice_coef` | **0.7695** |
+| `val_output_iou_metric` | **0.6291** |
+| `val_loss` | 0.7767 |
+| `val_output_loss` | 0.4291 |
 
-### Comparison with Published Baselines on Kvasir-SEG
+### Test Set Evaluation (100 samples)
+
+| Evaluation Mode | Dice | IoU |
+|:---|:---|:---|
+| Single-pass | 0.7607 ± 0.2352 | 0.6612 ± 0.2541 |
+| **8-fold TTA** | **0.7777 ± 0.2302** | **0.6825 ± 0.2500** |
+| TTA improvement | **+1.70% Dice** | — |
+
+8-fold TTA averages predictions over horizontal flip, vertical flip, 90°/180°/270° rotations, and combinations before thresholding at 0.5.
+
+### Comparison with Published Baselines (Kvasir-SEG)
 
 | Model | Dice | IoU | Reference |
-|:---|:---:|:---:|:---|
+|:---|:---|:---|:---|
 | Standard U-Net | 0.818 | 0.746 | Jha et al., 2020 |
 | ResU-Net | 0.813 | 0.793 | Zhang et al., 2018 |
 | Double U-Net | 0.813 | 0.733 | Jha et al., 2020 |
 | PraNet | 0.898 | 0.840 | Fan et al., 2020 |
-| Multi-Scale U-Net *(our prototype)* | 0.567 | 0.456 | This work |
-| **ResUNet++ *(this project)*** | **0.7941** | **0.6623** | **This work** |
+| **This Project (Val)** | **0.7695** | **0.6291** | This work |
+| **This Project + TTA (Test)** | **0.7777** | **0.6825** | This work |
 
-The ResUNet++ achieves a **40% improvement in Dice** over our initial Multi-Scale U-Net prototype (0.567 → 0.794) and performs competitively with the Standard U-Net baseline (0.818) — despite training from scratch with no pretrained backbone.
-
-### Training Curves
-
-The model shows healthy learning behaviour across all 60 epochs:
-- **Loss** decreases monotonically with training and validation closely tracking
-- **Dice Coefficient** rises consistently, peaking at epoch 54 (val Dice = 0.7941)
-- **IoU** follows the Dice curve, peaking simultaneously at 0.6623
-- No evidence of overfitting — train/val gap remains narrow throughout
-
-### Qualitative Predictions
-
-Each test prediction is visualised as a 4-panel strip:
-
-```
-[ Original Image ] | [ Ground Truth Mask ] | [ Predicted Mask ] | [ Overlay ]
-                                                                   GT=green, Pred=red
-```
-
-Sample results:
-- **Dice 0.941** — Large sessile polyp: near-perfect boundary delineation
-- **Dice 0.853** — Multi-region polyp: both regions correctly segmented
-- **Dice 0.769** — Small polyp: correct region, minor edge over-segmentation
-- **Dice 0.743** — Complex morphology: primary region captured, satellite missed
+> Note: Baselines are trained/evaluated with full data and larger compute. This project uses Colab T4 (15 GB) with 1,000 training images.
 
 ---
 
 ## 🛠️ Quick Start
 
-### Prerequisites
+### Option 1 — Google Colab (Recommended)
 
-```bash
-# Clone the repository
-git clone https://github.com/YOUR_USERNAME/polyp-segmentation.git
-cd polyp-segmentation
-```
+1. Open the notebook: [`polyp_seg_max_accuracy_deployed_model.ipynb`](./polyp_seg_max_accuracy_deployed_model.ipynb)
 
-### Option 1 — Run on Google Colab (Recommended)
+2. Set runtime to **GPU** (T4): `Runtime → Change runtime type → GPU`
 
-1. Open the notebook in Colab:
-
-   [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/YOUR_USERNAME/polyp-segmentation/blob/main/polyp_seg_max_accuracy.ipynb)
-
-2. Set runtime to **GPU** (T4 or A100): `Runtime → Change runtime type → GPU`
-
-3. Run all cells top-to-bottom. Cell 1 will prompt you to upload `kvasir-seg.zip`.
-
-4. Download the Kvasir-SEG dataset:
+3. Download Kvasir-SEG from the official source and upload as `kvasir-seg.zip` when Cell 1 prompts:
    ```
    https://datasets.simula.no/kvasir-seg/
    ```
 
+4. Run all cells top-to-bottom. Training takes approximately **3–4 hours** on a T4 GPU.
+
 ### Option 2 — Local Installation
 
 ```bash
-pip install tensorflow>=2.13.0 albumentations==1.3.1 opencv-python-headless \
-            scikit-learn tqdm matplotlib gradio huggingface_hub
+# Clone the repository
+git clone https://github.com/writickp3-ctrl/polyp-segmentation-kvasir.git
+cd polyp-segmentation-kvasir
+
+# Install dependencies
+pip install tensorflow>=2.13.0 \
+            albumentations==1.3.1 \
+            opencv-python-headless \
+            scikit-learn \
+            tqdm \
+            matplotlib \
+            gradio \
+            huggingface_hub
 ```
 
 ### Notebook Cell Guide
 
 | Cell | Description |
 |:---:|:---|
-| 1 | Upload & extract `kvasir-seg.zip` |
-| 2 | Install libraries, enable mixed precision |
-| 3 | Set all hyperparameters (edit here if needed) |
-| 4 | Load paths, stratified train/val/test split |
-| 5 | Build 12-transform Albumentations augmentation |
-| 6 | Build tf.data pipeline (lazy loading + prefetch) |
-| 7 | Visualise augmented training samples |
-| 8 | Define ResUNet++ with ASPP + Attention Gates |
-| 9 | Define losses, metrics, cosine LR; compile |
-| 10 | Set up cosine warmup LR callback |
-| 11 | Train for 60 epochs (saves best checkpoint) |
-| 12 | Plot training curves from CSV log |
-| 13 | Evaluate on test set with 8-fold TTA |
-| 14 | Export model + build HuggingFace deployment zip |
+| 1 | Upload & extract `kvasir-seg.zip`; auto-detect folder structure |
+| 2 | Install libraries, set random seeds, enable mixed precision |
+| 3 | Configuration — IMG_SIZE=352, BATCH_SIZE, EPOCHS, LR |
+| 4 | Load image/mask paths; deterministic train/val/test split |
+| 5 | Define 12-transform Albumentations augmentation pipeline |
+| 6 | Build tf.data datasets with OpenCV preprocessing + prefetch |
+| 7 | Visualise and save augmented training samples |
+| 8 | Define ResUNet++ (Res blocks, SE, ASPP, Attention Gates) |
+| 9 | Define Focal-Tversky + Boundary loss, metrics; compile |
+| 10 | Build and plot warmup + cosine LR schedule |
+| 11 | Train 60 epochs — ModelCheckpoint + CSVLogger |
+| 12 | Plot training curves from `training_log.csv` |
+| 13 | Load `best_model.keras`; evaluate single-pass + 8-fold TTA |
+| 14 | Export HuggingFace deployment package |
 
-### ⚠️ GPU Memory Notes
+### ⚠️ GPU Memory Guide
 
 | GPU | Recommended Settings |
 |:---|:---|
-| T4 (15GB) | `IMG_SIZE=352, BATCH_SIZE=8` ✅ |
+| T4 (15 GB) | `IMG_SIZE=352, BATCH_SIZE=8` ✅ Default |
 | T4 (low memory) | `IMG_SIZE=256, BATCH_SIZE=4` |
-| A100 (40GB) | `IMG_SIZE=384, BATCH_SIZE=16` 🚀 |
-| CPU only | Not recommended (training would take days) |
+| A100 (40 GB) | `IMG_SIZE=384, BATCH_SIZE=16` 🚀 |
+| CPU only | ❌ Not recommended — training would take days |
 
 ---
 
 ## 📁 Project Structure
 
 ```
-polyp-segmentation/
+polyp-segmentation-kvasir/
 │
-├── 📓 polyp_seg_max_accuracy.ipynb    # Main training notebook (Google Colab)
+├── 📓 polyp_seg_max_accuracy_deployed_model.ipynb   # Main training notebook
 │
-├── 🚀 hf_deployment/                  # HuggingFace Spaces deployment
-│   ├── app.py                         # Gradio web application
-│   ├── best_model.h5                  # Trained model weights
-│   ├── config.json                    # Model config (IMG_SIZE, threshold, etc.)
-│   ├── requirements.txt               # Python dependencies for HF Space
-│   └── README.md                      # HuggingFace Space card
+├── 🚀 hf_deployment/                                # HuggingFace Spaces app
+│   ├── app.py                                       # Gradio web application
+│   ├── requirements.txt                             # HF Space dependencies
+│   └── README.md                                    # HuggingFace Space card
+│                                                    # ⚠️ best_model.h5 NOT stored here
+│                                                    #    (>100 MB — hosted on HF Spaces)
 │
-├── 📊 outputs/                        # Generated during training
-│   ├── best_model.keras               # Best checkpoint (Keras format)
-│   ├── training_log.csv               # Per-epoch metrics log
-│   ├── training_curves.png            # Training history plots
-│   ├── sample_data.png                # Augmented sample visualisation
-│   └── predictions/                   # Prediction strip images
-│       ├── pred_0000_dice0.941.png
-│       ├── pred_0001_dice0.853.png
-│       └── ...
-│
-├── 📄 Polyp_Segmentation_Report.pdf   # Full project report (PCS 220)
-└── 📖 README.md                       # This file
+├── 📄 Polyp_Segmentation_FinalReport.pdf            # Full academic report (PCS 220)
+├── 🖼️ polyp-_result.png                             # Training history plot
+├── .gitignore                                       # Ignores model weights & zip files
+└── 📖 README.md                                     # This file
 ```
+
+> **Note on model weights:** `best_model.h5` / `best_model.keras` exceed GitHub's 100 MB limit and are therefore not tracked in this repository. They are deployed directly to HuggingFace Spaces and can be reproduced by running the notebook end-to-end.
 
 ---
 
 ## 🤗 Deployment
 
-The model is deployed as a **Gradio web app** on HuggingFace Spaces.
+The trained ResUNet++ model is deployed as a **Gradio web application** on HuggingFace Spaces.
 
 ### Live URL
 ```
 https://huggingface.co/spaces/Writick/polyp-segmentation
 ```
 
-### How it works
+### Inference Pipeline
 
 ```
-User uploads colonoscopy image (JPEG/PNG)
-            ↓
-    Resize to 256×256
-            ↓
-    Normalise [0, 1]
-            ↓
-  Model inference (ResUNet++)
-            ↓
-  Threshold at 0.5
-            ↓
-  Return: Binary Mask + Red Overlay
+User uploads colonoscopy image (JPEG / PNG)
+                ↓
+    Read with OpenCV → resize to 352×352
+                ↓
+        Normalise to [0, 1]
+                ↓
+    ResUNet++ forward pass (best_model.h5)
+                ↓
+    Extract main output head probability map
+                ↓
+         Threshold at 0.5
+                ↓
+  Return ① Binary Mask  +  ② Red Overlay
 ```
 
-### Deploy your own instance
+### Deploy Your Own Instance
 
 ```bash
-# 1. Run Cell 14 in the notebook to generate hf_deployment.zip
-# 2. Extract the zip
-# 3. Create a new HuggingFace Space (Gradio SDK)
-# 4. Upload all files from hf_deployment/ to the Space
+# Step 1: Run Cell 14 in the notebook — generates hf_deployment.zip
+# Step 2: Create a new HuggingFace Space (Gradio SDK)
+# Step 3: Upload files from hf_deployment/ (excluding best_model.h5 if >100 MB)
+#         Upload model weights separately via HF UI or Git LFS
 
-# Or use the HuggingFace CLI:
+# Or use the CLI:
 pip install huggingface_hub
 huggingface-cli login
 huggingface-cli upload YOUR_USERNAME/polyp-segmentation ./hf_deployment/ . --repo-type space
 ```
 
-### Gradio Interface Features
+### Interface Features
 
 - ✅ Upload any colonoscopy JPEG or PNG
-- ✅ Real-time inference (no GPU required on client side)
+- ✅ Real-time inference (server-side — no client GPU needed)
 - ✅ Binary mask output (downloadable)
 - ✅ Red overlay for visual inspection
-- ✅ Fully mobile-responsive
-- ✅ No installation required for end users
+- ✅ Fully mobile-responsive Gradio UI
+- ✅ No local installation required for end users
 
 ---
 
@@ -426,9 +410,9 @@ PCS 220: Multimedia Processing Lab — May 2026
 
 | Name | Roll No. | Contribution |
 |:---|:---|:---|
-| **Writick Parui** | 8025320111 | Architecture design, model training, Gradio interface, HuggingFace deployment |
-| **Sougata Mukherjee** | 8025320095 | Architecture design, model training, deployment testing & validation |
-| **Shreya Srivastava** | 8025320091 | Report documentation, research & literature review |
+| **Writick Parui** | 8025320111 | ResUNet++ architecture design, model training, Gradio interface development, HuggingFace deployment & hosting |
+| **Sougata Mukherjee** | 8025320095 | ResUNet++ architecture design, model training, deployment testing & inference validation |
+| **Shreya Srivastava** | 8025320091 | Report documentation, literature review & research |
 
 **Supervisor:** Dr. Abhishek Kesarwani (Assistant Professor, CSE Department, TIET)
 
@@ -465,6 +449,15 @@ PCS 220: Multimedia Processing Lab — May 2026
   publisher = {IEEE}
 }
 
+@article{zhang2018resunet,
+  title   = {Road Extraction by Deep Residual U-Net},
+  author  = {Zhang, Zhengxin and Liu, Qingjie and Wang, Yunhong},
+  journal = {IEEE Geoscience and Remote Sensing Letters},
+  volume  = {15},
+  number  = {5},
+  year    = {2018}
+}
+
 @inproceedings{long2015fcn,
   title     = {Fully Convolutional Networks for Semantic Segmentation},
   author    = {Long, Jonathan and Shelhamer, Evan and Darrell, Trevor},
@@ -477,19 +470,24 @@ PCS 220: Multimedia Processing Lab — May 2026
 
 ## 📄 Project Report
 
-The full academic project report (16 pages, PCS 220: Multimedia Processing Lab) covers:
-- Complete literature review and motivation
-- Detailed architecture description with layer-by-layer tables
-- Training configuration and loss function derivation
-- Quantitative results and comparison with baselines
-- Qualitative prediction visualisations
+The full academic report (`Polyp_Segmentation_FinalReport.pdf`, 18 pages) is included in this repository and covers:
+
+- Complete literature review and clinical motivation
+- Detailed ResUNet++ architecture with layer-by-layer tables and diagram
+- Focal-Tversky + Boundary loss derivation
+- Warmup-cosine LR schedule explanation
+- Albumentations augmentation pipeline details
+- Quantitative results with baseline comparison
+- 8-fold TTA evaluation methodology
+- Qualitative prediction grids
 - Deployment documentation with interface screenshots
+- Contribution summary
 
 ---
 
 ## 📜 License
 
-This project is licensed under the **MIT License** — feel free to use, modify, and distribute with attribution.
+This project is released under the **MIT License** — free to use, modify, and distribute with attribution.
 
 ---
 
@@ -497,6 +495,6 @@ This project is licensed under the **MIT License** — feel free to use, modify,
 
 **Made with ❤️ at Thapar Institute of Engineering & Technology, Patiala**
 
-[🚀 Try the Live Demo](https://huggingface.co/spaces/Writick/polyp-segmentation) · [⭐ Star this repo](#) · [📄 Read the Report](#-project-report)
+[🚀 Try the Live Demo](https://huggingface.co/spaces/Writick/polyp-segmentation) · [⭐ Star this repo](https://github.com/writickp3-ctrl/polyp-segmentation-kvasir) · [📄 Read the Report](./Polyp_Segmentation_FinalReport.pdf)
 
 </div>
